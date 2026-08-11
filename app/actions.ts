@@ -118,7 +118,7 @@ async function fetchSheetRows(sheetUrl: string) {
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error(`Failed to fetch sheet (HTTP ${res.status}).`);
   const text = await res.text();
-  const jsonMatch = text.match(/\{.*\}/s);
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error("Could not parse the sheet response.");
   const data = JSON.parse(jsonMatch[0]);
   return (data.table?.rows ?? []) as Array<
