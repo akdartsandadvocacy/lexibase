@@ -10,6 +10,11 @@ export type Client = {
   user_id: string;
   name: string;
   contact_email: string | null;
+  contact_phone: string | null;
+  date_of_contact: string | null;
+  request_type: string | null;
+  language_pairs: string | null;
+  event_or_due_date: string | null;
   notes: string | null;
   created_at: string;
 };
@@ -63,6 +68,12 @@ export const PARTS_OF_SPEECH = [
   "adverb",
   "phrase",
   "other",
+] as const;
+
+export const REQUEST_TYPES = [
+  "translation",
+  "interpretation virtual",
+  "interpretation in-person",
 ] as const;
 
 export const PROJECT_STATUSES = ["active", "archived", "completed"] as const;

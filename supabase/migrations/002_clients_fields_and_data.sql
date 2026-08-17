@@ -1,0 +1,130 @@
+-- LexiBase: Add richer client fields + 100 dummy rows
+-- Run this in the Supabase SQL Editor (as postgres / service role)
+
+-- 1. Add new columns to clients
+ALTER TABLE public.clients
+  ADD COLUMN IF NOT EXISTS contact_phone text,
+  ADD COLUMN IF NOT EXISTS date_of_contact date,
+  ADD COLUMN IF NOT EXISTS request_type text
+    CHECK (request_type IN ('translation','interpretation virtual','interpretation in-person')),
+  ADD COLUMN IF NOT EXISTS language_pairs text,
+  ADD COLUMN IF NOT EXISTS event_or_due_date date;
+
+-- 2. Unique index: one client name per user (case-insensitive)
+CREATE UNIQUE INDEX IF NOT EXISTS clients_user_name_unique
+  ON public.clients(user_id, lower(name));
+
+-- 3. Insert 100 dummy clients under the first authenticated user
+WITH u AS (
+  SELECT id FROM auth.users ORDER BY created_at LIMIT 1
+)
+INSERT INTO public.clients
+  (user_id, name, contact_email, contact_phone, date_of_contact,
+   request_type, language_pairs, event_or_due_date, notes)
+SELECT
+  u.id, v.name, v.email, v.phone, v.doc::date,
+  v.req, v.langs, v.due::date, v.notes
+FROM (VALUES
+  ('Acme Corp',         'john@acme.com',         '+1-212-555-0101', '2025-09-01', 'translation',              'EN ⇄ ES', '2025-10-15', 'Annual report translation'),
+  ('Banco Popular',     'maria@bpop.co',          '+1-787-555-0202', '2025-09-02', 'interpretation virtual',   'EN ⇄ PR', '2025-10-20', 'Board meeting interpreter'),
+  ('Cárnival Cruises',  'ops@carnival.com',       '+1-305-555-0303', '2025-09-03', 'interpretation in-person', 'EN ⇄ ES', '2025-10-25', 'Onboard safety briefing'),
+  ('Delta Airlines',    'legal@delta.com',         '+1-404-555-0404', '2025-09-04', 'translation',              'EN ⇄ FR', '2025-11-01', 'Contract review'),
+  ('Estrella Media',    'contact@estrella.mx',     '+52-55-555-0505', '2025-09-05', 'interpretation virtual',   'EN ⇄ ES', '2025-11-05', 'Live broadcast support'),
+  ('Fresenius Kabi',    'regulatory@fresenius.de', '+49-69-555-0606', '2025-09-06', 'translation',              'EN ⇄ DE', '2025-11-10', 'EMA submission docs'),
+  ('Google Ireland',    'legal-emea@google.com',   '+353-1-555-0707', '2025-09-07', 'translation',              'EN ⇄ FR', '2025-11-15', 'Privacy policy EU'),
+  ('HSBC Hong Kong',    'compliance@hsbc.hk',      '+852-555-0808',   '2025-09-08', 'translation',              'EN ⇄ ZH', '2025-11-20', 'KYC forms'),
+  ('Ikea Sweden',       'design@ikea.se',          '+46-8-555-0909',  '2025-09-09', 'translation',              'EN ⇄ SV', '2025-11-25', 'Product catalog'),
+  ('JPMorgan Chase',    'comms@jpmorgan.com',      '+1-212-555-1010', '2025-09-10', 'interpretation virtual',   'EN ⇄ JA', '2025-12-01', 'Investor relations call'),
+  ('KPMG Netherlands',  'audit@kpmg.nl',           '+31-20-555-1111', '2025-09-11', 'translation',              'EN ⇄ NL', '2025-12-05', 'Audit report NL'),
+  ('L\'Oréal Paris',    'marketing@loreal.fr',     '+33-1-555-1212',  '2025-09-12', 'translation',              'EN ⇄ FR', '2025-12-10', 'Marketing collateral'),
+  ('Microsoft Spain',   'legal@microsoft.es',      '+34-91-555-1313', '2025-09-13', 'interpretation in-person', 'EN ⇄ ES', '2025-12-15', 'Partner summit'),
+  ('Novartis Pharma',   'reg@novartis.ch',         '+41-61-555-1414', '2025-09-14', 'translation',              'EN ⇄ DE', '2025-12-20', 'Drug trial paperwork'),
+  ('Oxfam International', 'policy@oxfam.org',      '+44-20-555-1515', '2025-09-15', 'translation',              'EN ⇄ AR', '2025-12-25', 'Policy brief EN→AR'),
+  ('Pfizer Inc.',       'regulatory@pfizer.com',   '+1-212-555-1616', '2025-09-16', 'translation',              'EN ⇄ PT', '2026-01-05', 'FDA dossier PT'),
+  ('Qatar Airways',     'ops@qatarairways.com',    '+974-555-1717',   '2025-09-17', 'interpretation virtual',   'EN ⇄ AR', '2026-01-10', 'Crew training session'),
+  ('Red Bull GmbH',     'marketing@redbull.at',    '+43-1-555-1818',  '2025-09-18', 'translation',              'EN ⇄ DE', '2026-01-15', 'Sponsorship contracts'),
+  ('Siemens AG',        'hr@siemens.de',           '+49-89-555-1919', '2025-09-19', 'interpretation in-person', 'EN ⇄ DE', '2026-01-20', 'Staff induction Day'),
+  ('Toyota Japan',      'legal@toyota.co.jp',      '+81-3-555-2020',  '2025-09-20', 'translation',              'EN ⇄ JA', '2026-01-25', 'Warranty terms JA'),
+  ('UNICEF Geneva',     'comms@unicef.ch',         '+41-22-555-2121', '2025-09-21', 'translation',              'EN ⇄ FR', '2026-02-01', 'Press release FR'),
+  ('Volkswagen AG',     'comms@volkswagen.de',     '+49-5361-555-22', '2025-09-22', 'translation',              'EN ⇄ DE', '2026-02-05', 'Press kit'),
+  ('Walmart Inc.',      'ops@walmart.com',         '+1-479-555-2323', '2025-09-23', 'interpretation virtual',   'EN ⇄ ES', '2026-02-10', 'Supplier calls'),
+  ('Xiaomi Corp.',      'legal@xiaomi.cn',         '+86-10-555-2424', '2025-09-24', 'translation',              'EN ⇄ ZH', '2026-02-15', 'Patent filings ZH'),
+  ('Yves Rocher',       'marketing@yrocher.fr',    '+33-2-555-2525',  '2025-09-25', 'translation',              'EN ⇄ FR', '2026-02-20', 'Product labels'),
+  ('Zara / Inditex',    'legal@inditex.com',       '+34-98-555-2626', '2025-09-26', 'translation',              'EN ⇄ ES', '2026-02-25', 'Supplier agreements'),
+  ('Abbott Labs',       'reg@abbott.com',          '+1-847-555-2727', '2025-09-27', 'translation',              'EN ⇄ PT', '2026-03-01', 'Nutrition label PT'),
+  ('Bosch GmbH',        'hr@bosch.de',             '+49-711-555-282', '2025-09-28', 'interpretation in-person', 'EN ⇄ DE', '2026-03-05', 'Trade show booth'),
+  ('Cisco Systems',     'legal@cisco.com',         '+1-408-555-2929', '2025-09-29', 'translation',              'EN ⇄ KO', '2026-03-10', 'EULA Korean'),
+  ('DHL Express',       'ops@dhl.com',             '+49-221-555-30',  '2025-09-30', 'interpretation virtual',   'EN ⇄ TR', '2026-03-15', 'Logistics calls TR'),
+  ('Electrolux',        'design@electrolux.se',    '+46-8-555-3131',  '2025-10-01', 'translation',              'EN ⇄ SV', '2026-03-20', 'User manuals SV'),
+  ('Ferrero SpA',       'marketing@ferrero.it',    '+39-11-555-3232', '2025-10-02', 'translation',              'EN ⇄ IT', '2026-03-25', 'Recipe booklet IT'),
+  ('Genentech',         'reg@genentech.com',       '+1-650-555-3333', '2025-10-03', 'translation',              'EN ⇄ ES', '2026-04-01', 'Clinical trial forms'),
+  ('Henkel AG',         'comms@henkel.de',         '+49-211-555-34',  '2025-10-04', 'interpretation virtual',   'EN ⇄ DE', '2026-04-05', 'Shareholder Q&A'),
+  ('ING Bank',          'legal@ing.nl',            '+31-20-555-3535', '2025-10-05', 'translation',              'EN ⇄ NL', '2026-04-10', 'Loan agreement NL'),
+  ('Johnson & Johnson', 'reg@jnj.com',             '+1-732-555-3636', '2025-10-06', 'translation',              'EN ⇄ FR', '2026-04-15', 'Medical device docs FR'),
+  ('Kellogg\'s',        'ops@kelloggs.com',        '+1-269-555-3737', '2025-10-07', 'interpretation in-person', 'EN ⇄ ES', '2026-04-20', 'Factory tour interpreter'),
+  ('Lufthansa',         'ops@lufthansa.de',        '+49-69-555-3838', '2025-10-08', 'interpretation virtual',   'EN ⇄ DE', '2026-04-25', 'Crew scheduling call'),
+  ('Maersk Line',       'ops@maersk.dk',           '+45-33-555-3939', '2025-10-09', 'translation',              'EN ⇄ DA', '2026-05-01', 'Bill of lading DA'),
+  ('Nestlé SA',         'reg@nestle.ch',           '+41-21-555-4040', '2025-10-10', 'translation',              'EN ⇄ FR', '2026-05-05', 'Nutrition facts FR'),
+  ('Oracle Corp.',      'legal@oracle.com',        '+1-650-555-4141', '2025-10-11', 'translation',              'EN ⇄ PT', '2026-05-10', 'Software license PT'),
+  ('Peugeot / Stellantis', 'comms@stellantis.com', '+33-1-555-4242',  '2025-10-12', 'interpretation virtual',   'EN ⇄ FR', '2026-05-15', 'Press conference call'),
+  ('Qualcomm Inc.',     'legal@qualcomm.com',      '+1-858-555-4343', '2025-10-13', 'translation',              'EN ⇄ KO', '2026-05-20', 'Patent portfolio KO'),
+  ('Ricoh Japan',       'ops@ricoh.co.jp',         '+81-3-555-4444',  '2025-10-14', 'translation',              'EN ⇄ JA', '2026-05-25', 'Printer manuals JA'),
+  ('Shell plc',         'legal@shell.com',         '+44-20-555-4545', '2025-10-15', 'interpretation in-person', 'EN ⇄ NL', '2026-06-01', 'HSE compliance day'),
+  ('T-Mobile US',       'legal@t-mobile.com',      '+1-206-555-4646', '2025-10-16', 'translation',              'EN ⇄ ES', '2026-06-05', 'Plan terms ES'),
+  ('Unilever',          'marketing@unilever.com',  '+44-20-555-4747', '2025-10-17', 'translation',              'EN ⇄ AR', '2026-06-10', 'Campaign copy AR'),
+  ('Visa Inc.',         'legal@visa.com',          '+1-415-555-4848', '2025-10-18', 'translation',              'EN ⇄ ZH', '2026-06-15', 'Merchant terms ZH'),
+  ('Wipro Ltd.',        'legal@wipro.com',         '+91-80-555-4949', '2025-10-19', 'translation',              'EN ⇄ HI', '2026-06-20', 'Service agreement HI'),
+  ('Xerox Corp.',       'ops@xerox.com',           '+1-203-555-5050', '2025-10-20', 'interpretation virtual',   'EN ⇄ ES', '2026-06-25', 'Vendor call ES'),
+  ('Yamaha Motor',      'comms@yamaha-motor.co.jp','+81-53-555-5151', '2025-10-21', 'translation',              'EN ⇄ JA', '2026-07-01', 'Dealer brochure JA'),
+  ('Zurich Insurance',  'legal@zurich.com',        '+41-44-555-5252', '2025-10-22', 'translation',              'EN ⇄ DE', '2026-07-05', 'Policy wording DE'),
+  ('Accenture plc',     'legal@accenture.com',     '+353-1-555-5353', '2025-10-23', 'interpretation virtual',   'EN ⇄ FR', '2026-07-10', 'Partner briefing FR'),
+  ('BASF SE',           'comms@basf.de',           '+49-621-555-54',  '2025-10-24', 'translation',              'EN ⇄ DE', '2026-07-15', 'SDS sheets DE'),
+  ('Colgate-Palmolive', 'reg@colgate.com',         '+1-212-555-5555', '2025-10-25', 'translation',              'EN ⇄ PT', '2026-07-20', 'Product inserts PT'),
+  ('Danone SA',         'ops@danone.com',          '+33-1-555-5656',  '2025-10-26', 'interpretation in-person', 'EN ⇄ FR', '2026-07-25', 'Factory visit FR'),
+  ('Ericsson AB',       'legal@ericsson.com',      '+46-8-555-5757',  '2025-10-27', 'translation',              'EN ⇄ SV', '2026-08-01', 'Patent filings SV'),
+  ('FedEx Corp.',       'ops@fedex.com',           '+1-901-555-5858', '2025-10-28', 'interpretation virtual',   'EN ⇄ ES', '2026-08-05', 'Logistics coordination'),
+  ('Garmin Ltd.',       'legal@garmin.com',        '+1-913-555-5959', '2025-10-29', 'translation',              'EN ⇄ DE', '2026-08-10', 'GPS manual DE'),
+  ('Hilton Worldwide',  'ops@hilton.com',          '+1-703-555-6060', '2025-10-30', 'interpretation in-person', 'EN ⇄ ZH', '2026-08-15', 'Conference interpreting'),
+  ('Intel Corp.',       'legal@intel.com',         '+1-408-555-6161', '2025-10-31', 'translation',              'EN ⇄ KO', '2026-08-20', 'IP filing KO'),
+  ('JCB Services',      'ops@jcb.com',             '+44-1-555-6262',  '2025-11-01', 'interpretation virtual',   'EN ⇄ AR', '2026-08-25', 'Export compliance call'),
+  ('Konica Minolta',    'legal@km.net',            '+81-3-555-6363',  '2025-11-02', 'translation',              'EN ⇄ JA', '2026-09-01', 'Support docs JA'),
+  ('Lancôme Paris',     'marketing@lancome.fr',    '+33-1-555-6464',  '2025-11-03', 'translation',              'EN ⇄ FR', '2026-09-05', 'Product descriptions FR'),
+  ('Michelin France',   'comms@michelin.com',      '+33-4-555-6565',  '2025-11-04', 'translation',              'EN ⇄ FR', '2026-09-10', 'Tire brochure FR'),
+  ('Nokia Finland',     'legal@nokia.com',         '+358-10-555-666', '2025-11-05', 'interpretation virtual',   'EN ⇄ FI', '2026-09-15', 'Patent licensing call'),
+  ('Oreo / Mondelēz',   'ops@mondelez.com',       '+1-847-555-6767', '2025-11-06', 'interpretation in-person', 'EN ⇄ ES', '2026-09-20', 'Product launch event'),
+  ('Panasonic Corp.',   'comms@panasonic.co.jp',   '+81-6-555-6868',  '2025-11-07', 'translation',              'EN ⇄ JA', '2026-09-25', 'Safety manual JA'),
+  ('Reckitt Benckiser', 'legal@reckitt.com',       '+44-20-555-6969', '2025-11-08', 'translation',              'EN ⇄ AR', '2026-10-01', 'Regulatory submission AR'),
+  ('Schneider Electric', 'ops@se.com',             '+33-1-555-7070',  '2025-11-09', 'interpretation virtual',   'EN ⇄ DE', '2026-10-05', 'Engineering review DE'),
+  ('Toshiba Corp.',     'legal@toshiba.co.jp',     '+81-3-555-7171',  '2025-11-10', 'translation',              'EN ⇄ JA', '2026-10-10', 'Patent docs JA'),
+  ('Under Armour',      'comms@underarmour.com',   '+1-410-555-7272', '2025-11-11', 'translation',              'EN ⇄ ES', '2026-10-15', 'Marketing materials ES'),
+  ('Vodafone Group',    'legal@vodafone.co.uk',    '+44-20-555-7373', '2025-11-12', 'interpretation in-person', 'EN ⇄ IT', '2026-10-20', 'Regulatory hearing IT'),
+  ('Whirlpool Corp.',   'ops@whirlpool.com',       '+1-269-555-7474', '2025-11-13', 'translation',              'EN ⇄ PT', '2026-10-25', 'Appliance manual PT'),
+  ('Xpeng Motors',      'legal@xpeng.com',         '+86-20-555-7575', '2025-11-14', 'translation',              'EN ⇄ ZH', '2026-11-01', 'EV manual ZH'),
+  ('Yves Saint Laurent', 'comms@ysl.com',          '+33-1-555-7676',  '2025-11-15', 'translation',              'EN ⇄ FR', '2026-11-05', 'Fashion copy FR'),
+  ('Zoom Video Comm.',  'legal@zoom.us',           '+1-408-555-7777', '2025-11-16', 'interpretation virtual',   'EN ⇄ JA', '2026-11-10', 'Platform terms JA'),
+  ('Airbus SE',         'comms@airbus.com',        '+33-5-555-7878',  '2025-11-17', 'translation',              'EN ⇄ FR', '2026-11-15', 'Safety bulletin FR'),
+  ('Bayer AG',          'reg@bayer.de',            '+49-214-555-79',  '2025-11-18', 'translation',              'EN ⇄ DE', '2026-11-20', 'Pharma dossier DE'),
+  ('Coca-Cola Co.',     'legal@cocacola.com',      '+1-404-555-8080', '2025-11-19', 'interpretation virtual',   'EN ⇄ ES', '2026-11-25', 'Brand licensing call'),
+  ('Deutsche Post DHL', 'ops@dpdhl.de',            '+49-221-555-81',  '2025-11-20', 'interpretation in-person', 'EN ⇄ DE', '2026-12-01', 'Logistics summit'),
+  ('Eli Lilly',         'reg@lilly.com',           '+1-317-555-8282', '2025-11-21', 'translation',              'EN ⇄ PT', '2026-12-05', 'Drug label PT'),
+  ('Foxconn',           'legal@foxconn.com',       '+886-2-555-8383', '2025-11-22', 'translation',              'EN ⇄ ZH', '2026-12-10', 'Supplier terms ZH'),
+  ('GlaxoSmithKline',   'reg@gsk.com',             '+44-20-555-8484', '2025-11-23', 'translation',              'EN ⇄ FR', '2026-12-15', 'Regulatory docs FR'),
+  ('Hewlett Packard',   'legal@hp.com',            '+1-650-555-8585', '2025-11-24', 'translation',              'EN ⇄ ES', '2026-12-20', 'Warranty docs ES'),
+  ('ICBC',              'comms@icbc.com.cn',       '+86-10-555-8686', '2025-11-25', 'interpretation virtual',   'EN ⇄ ZH', '2026-12-25', 'Financial briefing ZH'),
+  ('Johnson Controls',  'ops@jci.com',             '+1-414-555-8787', '2025-11-26', 'interpretation in-person', 'EN ⇄ DE', '2027-01-01', 'Facility tour DE'),
+  ('Kraft Heinz',       'marketing@kraftheinz.com','+1-412-555-8888', '2025-11-27', 'translation',              'EN ⇄ ES', '2027-01-05', 'Ad campaign ES'),
+  ('Lego Group',        'legal@lego.com',          '+45-45-555-8989', '2025-11-28', 'translation',              'EN ⇄ DA', '2027-01-10', 'Trademark filing DA'),
+  ('Mastercard Inc.',   'legal@mastercard.com',    '+1-914-555-9090', '2025-11-29', 'translation',              'EN ⇄ FR', '2027-01-15', 'Network rules FR'),
+  ('Nissan Motor',      'ops@nissan.co.jp',        '+81-45-555-9191', '2025-11-30', 'interpretation virtual',   'EN ⇄ JA', '2027-01-20', 'Supplier call JA'),
+  ('Procter & Gamble',  'reg@pg.com',              '+1-513-555-9292', '2025-12-01', 'translation',              'EN ⇄ ZH', '2027-01-25', 'Product safety data ZH'),
+  ('Roche Group',       'legal@roche.com',         '+41-61-555-9393', '2025-12-02', 'translation',              'EN ⇄ DE', '2027-02-01', 'Clinical summary DE'),
+  ('SAP SE',            'comms@sap.com',           '+49-6227-555-94', '2025-12-03', 'interpretation in-person', 'EN ⇄ DE', '2027-02-05', 'Tech conference DE'),
+  ('TotalEnergies',     'legal@totalenergies.com', '+33-1-555-9595',  '2025-12-04', 'translation',              'EN ⇄ FR', '2027-02-10', 'HSE docs FR'),
+  ('UPS Inc.',          'ops@ups.com',             '+1-404-555-9696', '2025-12-05', 'interpretation virtual',   'EN ⇄ ES', '2027-02-15', 'Customs call ES'),
+  ('Volvo Cars',        'comms@volvocars.com',     '+46-31-555-9797', '2025-12-06', 'translation',              'EN ⇄ SV', '2027-02-20', 'Owner manual SV'),
+  ('WPP Group',         'legal@wpp.com',           '+44-20-555-9898', '2025-12-07', 'interpretation virtual',   'EN ⇄ JA', '2027-02-25', 'Client briefing JA'),
+  ('Bridgestone Corp.', 'ops@bridgestone.co.jp',   '+81-3-555-9999',  '2025-12-08', 'translation',              'EN ⇄ JA', '2027-03-01', 'Product specs JA'),
+  ('Capgemini SE',      'legal@capgemini.com',     '+33-1-555-0001',  '2025-12-09', 'interpretation in-person', 'EN ⇄ FR', '2027-03-05', 'Consulting engagement FR')
+) AS v(name, email, phone, doc, req, langs, due, notes)
+CROSS JOIN u
+ON CONFLICT (user_id, lower(name)) DO NOTHING;

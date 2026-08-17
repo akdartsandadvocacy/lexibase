@@ -22,9 +22,17 @@ create table public.clients (
   user_id uuid references auth.users(id) on delete cascade not null,
   name text not null,
   contact_email text,
+  contact_phone text,
+  date_of_contact date,
+  request_type text check (request_type in ('translation','interpretation virtual','interpretation in-person')),
+  language_pairs text,
+  event_or_due_date date,
   notes text,
   created_at timestamptz default now()
 );
+
+create unique index clients_user_name_unique
+  on public.clients(user_id, lower(name));
 
 create index idx_clients_user_id on public.clients(user_id);
 

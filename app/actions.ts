@@ -91,6 +91,13 @@ export async function deleteTranslation(id: string, termId: string) {
   revalidatePath(`/terms/${termId}`);
 }
 
+export async function deleteClient(id: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("clients").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/clients");
+}
+
 export async function createClientRecord(formData: FormData) {
   const supabase = await createClient();
   const {
@@ -102,6 +109,11 @@ export async function createClientRecord(formData: FormData) {
     user_id: user.id,
     name: (formData.get("name") as string).trim(),
     contact_email: (formData.get("contact_email") as string) || null,
+    contact_phone: (formData.get("contact_phone") as string) || null,
+    date_of_contact: (formData.get("date_of_contact") as string) || null,
+    request_type: (formData.get("request_type") as string) || null,
+    language_pairs: (formData.get("language_pairs") as string) || null,
+    event_or_due_date: (formData.get("event_or_due_date") as string) || null,
     notes: (formData.get("notes") as string) || null,
   });
 
@@ -121,9 +133,10 @@ async function fetchSheetRows(sheetUrl: string) {
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error("Could not parse the sheet response.");
   const data = JSON.parse(jsonMatch[0]);
-  return (data.table?.rows ?? []) as Array<
-    Array<{ v?: string | number | null } | null>
-  >;
+  const rawRows = (data.table?.rows ?? []) as Array<{
+    c?: Array<{ v?: string | number | null } | null>;
+  }>;
+  return rawRows.map((row) => row.c ?? []);
 }
 
 export async function importGlossary(formData: FormData) {
